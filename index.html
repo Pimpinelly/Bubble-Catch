@@ -65,7 +65,6 @@
             letter-spacing: 1px;
         }
 
-        /* Anzeige für Punktabzug */
         #penalty-flash {
             position: absolute;
             top: 50%;
@@ -81,7 +80,6 @@
             transition: opacity 0.3s;
         }
 
-        /* Pimpinelly Container: Kaschiert unsaubere Freistellungen */
         #pimpinelly-container {
             position: absolute;
             bottom: -20px;
@@ -196,7 +194,6 @@
         <!-- Musik Element -->
         <audio id="bgMusic" loop>
             <source src="musik.mp3" type="audio/mpeg">
-            Dein Browser unterstützt keine Musik.
         </audio>
 
         <div id="ui">
@@ -212,11 +209,11 @@
 
         <div id="overlay">
             <div class="title-img-wrapper">
-                <img id="title-screen-img" src="bubblecatch.png" alt="Titelbild">
+                <img id="title-screen-img" src="bubblecatch.png" alt="Titelbild" onerror="this.style.display='none'">
             </div>
             <h1>BABBELS PLOPP!</h1>
             <button class="primary-btn" onclick="startGame()">SPIEL STARTEN</button>
-            <p class="hint">Vorsicht vor den roten Blasen!</p>
+            <p class="hint">🦆 = 10 Pkt | 🌸 = 20 Pkt | 🔴 = -15 Pkt!</p>
         </div>
     </div>
 
@@ -247,24 +244,65 @@
             gameActive = true;
             overlay.classList.add('hidden');
             
-            // Musik starten
-            bgMusic.play().catch(e => console.log("Musik-Autoplay verhindert."));
+            // Musik explizit nach Nutzer-Interaktion starten
+            const playPromise = bgMusic.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.log("Musik konnte nicht automatisch starten: ", error);
+                });
+            }
             
             animate();
         }
 
+        function drawDuck(ctx, x, y, size) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = "#ffeb3b";
+            // Körper
+            ctx.beginPath(); ctx.arc(0, size/4, size/2.5, 0, Math.PI * 2); ctx.fill();
+            // Kopf
+            ctx.beginPath(); ctx.arc(size/4, -size/10, size/4, 0, Math.PI * 2); ctx.fill();
+            // Schnabel
+            ctx.fillStyle = "#ff9800";
+            ctx.beginPath(); ctx.moveTo(size/2, -size/10); ctx.lineTo(size/1.3, -size/20); ctx.lineTo(size/2, size/20); ctx.closePath(); ctx.fill();
+            // Auge
+            ctx.fillStyle = "black";
+            ctx.beginPath(); ctx.arc(size/2.8, -size/6, size/20, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+
+        function drawFlower(ctx, x, y, size) {
+            ctx.save();
+            ctx.translate(x, y);
+            const petals = 6;
+            ctx.fillStyle = "#ff4081";
+            for (let i = 0; i < petals; i++) {
+                ctx.rotate((Math.PI * 2) / petals);
+                ctx.beginPath(); ctx.ellipse(size/3, 0, size/3, size/6, 0, 0, Math.PI * 2); ctx.fill();
+            }
+            ctx.fillStyle = "#ffc107";
+            ctx.beginPath(); ctx.arc(0, 0, size/5, 0, Math.PI * 2); ctx.fill();
+            ctx.restore();
+        }
+
         function createBubble() {
-            const radius = Math.random() * 20 + 20;
-            // 15% Chance auf eine rote "Straf-Blase"
-            const isDanger = Math.random() < 0.15;
+            const radius = Math.random() * 20 + 25;
+            const rand = Math.random();
+            
+            let type = 'normal';
+            if (rand < 0.15) type = 'danger';
+            else if (rand < 0.25) type = 'duck';
+            else if (rand < 0.30) type = 'flower';
             
             bubbles.push({
                 x: Math.random() * (canvas.width - radius * 2) + radius,
                 y: canvas.height + radius,
                 radius: radius,
-                speed: isDanger ? Math.random() * 3 + 2 : Math.random() * 2 + 1,
-                hue: isDanger ? 0 : Math.random() * 360,
-                isDanger: isDanger
+                speed: type === 'danger' ? Math.random() * 3 + 2.5 : Math.random() * 2 + 1.2,
+                hue: Math.random() * 360,
+                type: type,
+                wobble: Math.random() * Math.PI
             });
         }
 
@@ -272,51 +310,73 @@
             if (!gameActive) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            if (Math.random() < 0.04) createBubble();
+            if (Math.random() < 0.045) createBubble();
 
             for (let i = bubbles.length - 1; i >= 0; i--) {
                 let b = bubbles[i];
                 b.y -= b.speed;
-                b.x += Math.sin(b.y / 30) * 1.5;
+                b.x += Math.sin(b.y / 40 + b.wobble) * 2;
 
+                ctx.save();
+                
+                // Inhalt zeichnen
+                if (b.type === 'duck') drawDuck(ctx, b.x, b.y, b.radius * 0.8);
+                if (b.type === 'flower') drawFlower(ctx, b.x, b.y, b.radius * 0.7);
+
+                // Seifenblase zeichnen
                 ctx.beginPath();
-                if (b.isDanger) {
-                    // Rote Gefahr-Blase
-                    ctx.fillStyle = `rgba(255, 23, 68, 0.6)`;
-                    ctx.strokeStyle = `rgba(255, 0, 0, 0.9)`;
+                if (b.type === 'danger') {
+                    ctx.fillStyle = `rgba(255, 23, 68, 0.5)`;
+                    ctx.strokeStyle = `rgba(255, 0, 0, 0.8)`;
                 } else {
-                    ctx.fillStyle = `hsla(${b.hue}, 70%, 80%, 0.4)`;
-                    ctx.strokeStyle = `hsla(${b.hue}, 70%, 60%, 0.8)`;
+                    ctx.fillStyle = `hsla(${b.hue}, 70%, 85%, 0.35)`;
+                    ctx.strokeStyle = `hsla(${b.hue}, 70%, 65%, 0.7)`;
                 }
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 3;
                 ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.stroke();
 
                 // Glanzlicht
                 ctx.beginPath();
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.arc(b.x - b.radius/3, b.y - b.radius/3, b.radius/4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.ellipse(b.x - b.radius/2.5, b.y - b.radius/2.5, b.radius/4, b.radius/6, Math.PI/4, 0, Math.PI*2);
                 ctx.fill();
+
+                ctx.restore();
 
                 if (b.y < -b.radius) bubbles.splice(i, 1);
             }
             requestAnimationFrame(animate);
         }
 
-        canvas.addEventListener('click', (e) => {
+        canvas.addEventListener('mousedown', (e) => {
             if (!gameActive) return;
+            checkHit(e.clientX, e.clientY);
+        });
+
+        canvas.addEventListener('touchstart', (e) => {
+            if (!gameActive) return;
+            e.preventDefault();
+            checkHit(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+
+        function checkHit(x, y) {
             for (let i = bubbles.length - 1; i >= 0; i--) {
                 let b = bubbles[i];
-                let dist = Math.sqrt((e.clientX - b.x)**2 + (e.clientY - b.y)**2);
+                let dist = Math.sqrt((x - b.x)**2 + (y - b.y)**2);
                 
                 if (dist < b.radius + 15) {
-                    if (b.isDanger) {
-                        // Punktabzug
+                    if (b.type === 'danger') {
                         score = Math.max(0, score - 15);
                         showPenalty();
+                    } else if (b.type === 'duck') {
+                        score += 10;
+                        showPlopp("QUACK! +10");
+                    } else if (b.type === 'flower') {
+                        score += 20;
+                        showPlopp("ZAUBERHAFT! +20");
                     } else {
-                        // Punktgewinn
                         score++;
                         showPlopp("Plopp!");
                     }
@@ -325,7 +385,7 @@
                     break;
                 }
             }
-        });
+        }
 
         function showPlopp(text) {
             speech.innerText = text;
@@ -334,17 +394,17 @@
             setTimeout(() => {
                 speech.style.opacity = "0";
                 speech.style.transform = "translateX(-50%) scale(1)";
-            }, 600);
+            }, 800);
         }
 
         function showPenalty() {
             penaltyFlash.style.opacity = "1";
-            speech.innerText = "Oh nein!";
+            speech.innerText = "Hoppla! -15";
             speech.style.opacity = "1";
             setTimeout(() => {
                 penaltyFlash.style.opacity = "0";
                 speech.style.opacity = "0";
-            }, 800);
+            }, 1000);
         }
     </script>
 </body>
