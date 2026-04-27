@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pimpinellys Seifenblasen-Spaß</title>
+    <style>
+        :root {
+            --circus-red: #d32f2f;
+            --circus-gold: #ffc107;
+            --sky-blue: #a1d9ff;
+            --duck-yellow: #ffeb3b;
+            --flower-pink: #ff4081;
+            --glitter: #fff176;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #2c3e50;
+            color: #333;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to top, #fff9c4, var(--sky-blue));
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .score-board {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 30px;
+            border-radius: 20px;
+            border: 4px solid var(--circus-red);
+            font-size: clamp(18px, 5vw, 28px);
+            font-weight: bold;
+            color: var(--circus-red);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #pimpinelly-speech {
+            position: absolute;
+            bottom: 240px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 2px solid #333;
+            font-size: 18px;
+            font-weight: bold;
+            max-width: 200px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 15;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        #pimpinelly-speech::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: white transparent;
+            transform: translateX(-50%);
+        }
+
+        #pimpinelly-container {
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 280px;
+            height: 280px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #pimpinelly-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            animation: bounce 3.5s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0) rotate(-1.5deg) scale(1); }
+            50% { transform: translateY(-12px) rotate(1.5deg) scale(1.02); }
+        }
+
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, rgba(211, 47, 47, 0.95) 0%, rgba(150, 20, 20, 0.98) 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+            z-index: 50;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .hidden { display: none !important; }
+
+        h1 { 
+            font-size: clamp(30px, 8vw, 55px); 
+            margin: 0 0 10px 0; 
+            text-shadow: 4px 4px 0px var(--circus-gold);
+            font-weight: 900;
+        }
+        
+        .logo-circle {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            margin-bottom: 15px;
+            border: 5px solid var(--circus-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(255,255,255,0.4);
+        }
+
+        .red-nose {
+            width: 35px;
+            height: 35px;
+            background: var(--circus-red);
+            border-radius: 50%;
+            box-shadow: inset -5px -5px 10px rgba(0,0,0,0.3);
+        }
+
+        .difficulty-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .diff-btn {
+            padding: 12px;
+            font-size: 20px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+        }
+
+        .diff-easy { background: #8bc34a; color: white; }
+        .diff-medium { background: #ff9800; color: white; }
+        .diff-hard { background: #f44336; color: white; }
+
+        .diff-btn:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+        }
+
+        #back-to-menu {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.8);
+            border: 2px solid var(--circus-red);
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 60;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui">
+            <div class="score-board">Punkte: <span id="score">0</span></div>
+        </div>
+
+        <button id="back-to-menu" class="hidden">Menü</button>
+
+        <div id="pimpinelly-speech">Plopp!</div>
+
+        <div id="pimpinelly-container">
+            <img id="pimpinelly-img" src="freepik_char1-korb-entfernen-und-_2870782980(1).jpg" alt="Pimpinelly">
+        </div>
+
+        <div id="overlay">
+            <div class="logo-circle">
+                <div class="red-nose"></div>
+            </div>
+            <h1>BABBELS PLOPP!</h1>
+            <p style="font-size: 16px; opacity: 0.9; margin: 0 0 10px 0;">
+                🦆 = 10 Pkt | 🌸 = 20 Pkt
+            </p>
+            <p style="font-size: 18px; opacity: 0.9; margin: 0;">Wähle deine Stufe:</p>
+            
+            <div class="difficulty-container">
+                <button class="diff-btn diff-easy" onclick="startGame('easy')">Leicht 🎈</button>
+                <button class="diff-btn diff-medium" onclick="startGame('medium')">Mittel 🦆</button>
+                <button class="diff-btn diff-hard" onclick="startGame('hard')">Schwer 🔥</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const overlay = document.getElementById('overlay');
+        const menuBtn = document.getElementById('back-to-menu');
+        const speechBubble = document.getElementById('pimpinelly-speech');
+
+        let gameActive = false;
+        let score = 0;
+        let bubbles = [];
+        let particles = [];
+        let animationId;
+        
+        // Schwierigkeits-Einstellungen
+        let config = {
+            speedMult: 1,
+            spawnRate: 0.05,
+            sizeBase: 25,
+            duckChance: 0.15,
+            flowerChance: 0.05
+        };
+
+        const quotes = ["Plopp!", "Spitze!", "Witzig!", "Hoppla!", "Kunterbunt!", "Magisch!", "Weiter so!"];
+        const duckQuotes = ["QUACK!", "Super-Ente!", "Entastisch!", "Goldig!", "10 Punkte!"];
+        const flowerQuotes = ["Wunderschön!", "Glitzer-Blüte!", "Zauberhaft!", "20 Punkte!", "Wow! ✨"];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        function showSpeech(type = 'normal') {
+            let list = quotes;
+            if (type === 'duck') list = duckQuotes;
+            if (type === 'flower') list = flowerQuotes;
+            
+            speechBubble.innerText = list[Math.floor(Math.random() * list.length)];
+            speechBubble.style.opacity = "1";
+            setTimeout(() => { if(gameActive) speechBubble.style.opacity = "0"; }, 1800);
+        }
+
+        function handleInteraction(clientX, clientY) {
+            if (!gameActive) return;
+
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                const b = bubbles[i];
+                const dx = clientX - b.x;
+                const dy = clientY - b.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < b.radius + 35) {
+                    popBubble(i);
+                    break; 
+                }
+            }
+        }
+
+        function popBubble(index) {
+            const b = bubbles[index];
+            let points = 1;
+            let type = 'normal';
+            let pCount = 15;
+            let pColor = b.color;
+
+            if (b.hasDuck) {
+                points = 10;
+                type = 'duck';
+                pCount = 25;
+                pColor = 'rgba(255, 235, 59, 0.9)';
+            } else if (b.hasFlower) {
+                points = 20;
+                type = 'flower';
+                pCount = 40;
+                pColor = 'rgba(255, 64, 129, 0.9)';
+            }
+
+            score += points;
+            scoreElement.innerText = score;
+            
+            createPopParticles(b.x, b.y, pColor, pCount, type === 'flower');
+            
+            if (type !== 'normal') {
+                showSpeech(type);
+            } else if (score % 8 === 0) {
+                showSpeech('normal');
+            }
+            
+            bubbles.splice(index, 1);
+        }
+
+        canvas.addEventListener('mousedown', (e) => handleInteraction(e.clientX, e.clientY));
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            handleInteraction(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: false });
+
+        function createPopParticles(x, y, color, count, isGlitter) {
+            for (let i = 0; i < count; i++) {
+                const particleColor = isGlitter ? `hsla(${Math.random() * 360}, 100%, 75%, 1)` : color;
+                particles.push({
+                    x, y,
+                    radius: Math.random() * (isGlitter ? 6 : 4) + 1,
+                    color: particleColor,
+                    vx: (Math.random() - 0.5) * (isGlitter ? 18 : 14),
+                    vy: (Math.random() - 0.5) * (isGlitter ? 18 : 14),
+                    life: 1.0,
+                    gravity: 0.15,
+                    isGlitter: isGlitter
+                });
+            }
+        }
+
+        function drawDuck(ctx, x, y, size) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = "#ffeb3b";
+            ctx.beginPath();
+            ctx.arc(0, size/4, size/2.5, 0, Math.PI * 2); // Körper
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(size/4, -size/10, size/4, 0, Math.PI * 2); // Kopf
+            ctx.fill();
+            ctx.fillStyle = "#ff9800";
+            ctx.beginPath(); // Schnabel
+            ctx.moveTo(size/2, -size/10); ctx.lineTo(size/1.3, -size/20); ctx.lineTo(size/2, size/20); ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = "black";
+            ctx.beginPath();
+            ctx.arc(size/2.8, -size/6, size/20, 0, Math.PI * 2); // Auge
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function drawFlower(ctx, x, y, size) {
+            ctx.save();
+            ctx.translate(x, y);
+            const petals = 6;
+            ctx.fillStyle = "#ff4081";
+            
+            // Blütenblätter
+            for (let i = 0; i < petals; i++) {
+                ctx.rotate((Math.PI * 2) / petals);
+                ctx.beginPath();
+                ctx.ellipse(size/3, 0, size/3, size/6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                // Kleiner weißer Glanz auf Blättern
+                ctx.fillStyle = "rgba(255,255,255,0.3)";
+                ctx.beginPath();
+                ctx.ellipse(size/3, -size/12, size/6, size/15, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = "#ff4081";
+            }
+            
+            // Blütenmitte
+            ctx.fillStyle = "#ffc107";
+            ctx.beginPath();
+            ctx.arc(0, 0, size/5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Glitzerpunkte
+            ctx.fillStyle = "white";
+            for(let i=0; i<5; i++) {
+                const rx = (Math.random()-0.5) * size;
+                const ry = (Math.random()-0.5) * size;
+                ctx.beginPath();
+                ctx.arc(rx, ry, 1.5, 0, Math.PI*2);
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function spawnBubble() {
+            if (!gameActive) return;
+            const radius = (Math.random() * 20 + config.sizeBase);
+            const hue = Math.random() * 360;
+            
+            let hasFlower = Math.random() < config.flowerChance;
+            let hasDuck = !hasFlower && Math.random() < config.duckChance;
+            
+            bubbles.push({
+                x: canvas.width / 2 + (Math.random() - 0.5) * 100,
+                y: canvas.height - 180,
+                radius: (hasDuck || hasFlower) ? radius * 1.2 : radius,
+                hasDuck: hasDuck,
+                hasFlower: hasFlower,
+                speedY: (Math.random() * 2 + 1.5 + (score / 200)) * config.speedMult,
+                speedX: (Math.random() - 0.5) * 3,
+                hue: hue,
+                color: hasFlower ? 'rgba(255, 192, 203, 0.4)' : `hsla(${hue}, 80%, 80%, 0.4)`,
+                edgeColor: hasFlower ? 'rgba(255, 64, 129, 0.7)' : `hsla(${hue}, 80%, 70%, 0.7)`,
+                wobble: Math.random() * Math.PI
+            });
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Partikel
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.vy += p.gravity; p.life -= 0.02;
+                if (p.life <= 0) { particles.splice(i, 1); continue; }
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath(); 
+                if(p.isGlitter && Math.random() > 0.5) {
+                    // Funkeln für Blüten-Partikel
+                    ctx.rect(p.x-p.radius, p.y-p.radius, p.radius*2, p.radius*2);
+                } else {
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                }
+                ctx.fill();
+            }
+            ctx.globalAlpha = 1.0;
+
+            if (Math.random() < config.spawnRate) spawnBubble();
+
+            for (let i = bubbles.length - 1; i >= 0; i--) {
+                const b = bubbles[i];
+                b.y -= b.speedY;
+                b.x += Math.sin(b.y / 40 + b.wobble) * 2.5;
+
+                ctx.save();
+                
+                // Inhalt zeichnen
+                if (b.hasDuck) drawDuck(ctx, b.x, b.y, b.radius * 0.8);
+                if (b.hasFlower) drawFlower(ctx, b.x, b.y, b.radius * 0.7);
+
+                // Blase zeichnen
+                ctx.beginPath();
+                const gradient = ctx.createRadialGradient(b.x-b.radius/3, b.y-b.radius/3, b.radius/10, b.x, b.y, b.radius);
+                gradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+                gradient.addColorStop(0.8, b.color);
+                gradient.addColorStop(1, b.edgeColor);
+                
+                ctx.fillStyle = gradient;
+                ctx.lineWidth = (b.hasDuck || b.hasFlower) ? 3 : 1.5;
+                ctx.strokeStyle = b.hasFlower ? 'rgba(255, 64, 129, 0.6)' : (b.hasDuck ? 'rgba(255,235,59,0.6)' : `hsla(${b.hue},100%,90%,0.5)`);
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fill(); ctx.stroke();
+
+                // Glanzlicht
+                ctx.beginPath();
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.ellipse(b.x-b.radius/2.2, b.y-b.radius/2.2, b.radius/3.5, b.radius/5.5, Math.PI/4, 0, Math.PI*2);
+                ctx.fill();
+                
+                // Extra Glitzer für Blüten-Blasen
+                if (b.hasFlower && Math.random() > 0.8) {
+                    ctx.fillStyle = "white";
+                    ctx.beginPath();
+                    ctx.arc(b.x + (Math.random()-0.5)*b.radius, b.y + (Math.random()-0.5)*b.radius, 2, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+
+                if (b.y < -b.radius) bubbles.splice(i, 1);
+            }
+
+            animationId = requestAnimationFrame(update);
+        }
+
+        function startGame(difficulty) {
+            switch(difficulty) {
+                case 'easy':
+                    config = { speedMult: 0.8, spawnRate: 0.04, sizeBase: 35, duckChance: 0.2, flowerChance: 0.07 };
+                    break;
+                case 'medium':
+                    config = { speedMult: 1.2, spawnRate: 0.06, sizeBase: 25, duckChance: 0.15, flowerChance: 0.05 };
+                    break;
+                case 'hard':
+                    config = { speedMult: 1.8, spawnRate: 0.09, sizeBase: 18, duckChance: 0.12, flowerChance: 0.04 };
+                    break;
+            }
+
+            score = 0;
+            bubbles = [];
+            particles = [];
+            scoreElement.innerText = '0';
+            gameActive = true;
+            overlay.classList.add('hidden');
+            menuBtn.classList.remove('hidden');
+            speechBubble.style.opacity = "0";
+            showSpeech('normal');
+            cancelAnimationFrame(animationId);
+            update();
+        }
+
+        menuBtn.addEventListener('click', () => {
+            gameActive = false;
+            overlay.classList.remove('hidden');
+            menuBtn.classList.add('hidden');
+            cancelAnimationFrame(animationId);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+    </script>
+</body>
+</html>
