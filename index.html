@@ -12,7 +12,6 @@
             --duck-yellow: #ffeb3b;
             --flower-pink: #ff4081;
             --danger-red: #ff1744;
-            /* Gut lesbare, moderne serifenlose Schriftarten (Univers/Helvetica-Stil) */
             --font-main: 'Helvetica Neue', Helvetica, Arial, 'Liberation Sans', sans-serif;
         }
 
@@ -209,8 +208,8 @@
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         
-        <!-- Musik Element mit ID für JS Zugriff -->
-        <audio id="bgMusic" loop preload="auto">
+        <!-- Musik Element (Loop entfernt) -->
+        <audio id="bgMusic" preload="auto">
             <source src="musik.mp3" type="audio/mpeg">
         </audio>
 
@@ -231,7 +230,7 @@
             </div>
             <h1>SEIFENBLASEN ZERPLATZEN!</h1>
             <button class="primary-btn" id="startBtn">SPIEL STARTEN</button>
-            <div class="hint">🦆 +10 | 🌸 +20 | 🔴 -15!</div>
+            <div class="hint">🦆 +10 | 🌸 +20 | 🎶 Musik | 🔴 -15!</div>
         </div>
     </div>
 
@@ -256,7 +255,6 @@
         window.addEventListener('resize', resize);
         resize();
 
-        // Musik-Start Logik
         startBtn.addEventListener('click', () => {
             startGame();
         });
@@ -267,21 +265,9 @@
             scoreElement.innerText = '0';
             gameActive = true;
             overlay.classList.add('hidden');
-            
-            // Audio-Kontext erzwingen
-            bgMusic.volume = 0.5;
-            const playPromise = bgMusic.play();
-            
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.log("Audio konnte nicht starten. Eventuell fehlt musik.mp3 im Ordner.");
-                });
-            }
-            
             animate();
         }
 
-        // Zeichenfunktionen für Bonus-Inhalte
         function drawDuck(ctx, x, y, size) {
             ctx.save();
             ctx.translate(x, y);
@@ -309,6 +295,25 @@
             ctx.restore();
         }
 
+        function drawNote(ctx, x, y, size) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.fillStyle = "#000";
+            // Notenkopf
+            ctx.beginPath();
+            ctx.ellipse(-size/6, size/4, size/6, size/8, 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            // Notenhals
+            ctx.fillRect(size/20, -size/3, size/12, size/1.8);
+            // Fähnchen
+            ctx.beginPath();
+            ctx.moveTo(size/20, -size/3);
+            ctx.bezierCurveTo(size/3, -size/4, size/3, 0, size/20, size/10);
+            ctx.lineWidth = size/10;
+            ctx.stroke();
+            ctx.restore();
+        }
+
         function createBubble() {
             const radius = Math.random() * 20 + 30;
             const rand = Math.random();
@@ -316,7 +321,8 @@
             let type = 'normal';
             if (rand < 0.15) type = 'danger';
             else if (rand < 0.25) type = 'duck';
-            else if (rand < 0.32) type = 'flower';
+            else if (rand < 0.30) type = 'flower';
+            else if (rand < 0.35) type = 'music'; // Goldene Musik-Blase
             
             bubbles.push({
                 x: Math.random() * (canvas.width - radius * 2) + radius,
@@ -342,15 +348,17 @@
 
                 ctx.save();
                 
-                // Bonus-Symbole zeichnen
                 if (b.type === 'duck') drawDuck(ctx, b.x, b.y, b.radius * 0.8);
                 if (b.type === 'flower') drawFlower(ctx, b.x, b.y, b.radius * 0.7);
+                if (b.type === 'music') drawNote(ctx, b.x, b.y, b.radius * 0.6);
 
-                // Blasen-Körper
                 ctx.beginPath();
                 if (b.type === 'danger') {
                     ctx.fillStyle = `rgba(255, 23, 68, 0.55)`;
                     ctx.strokeStyle = `rgba(255, 0, 0, 0.9)`;
+                } else if (b.type === 'music') {
+                    ctx.fillStyle = `rgba(255, 215, 0, 0.6)`;
+                    ctx.strokeStyle = `rgba(218, 165, 32, 0.9)`;
                 } else {
                     ctx.fillStyle = `hsla(${b.hue}, 80%, 85%, 0.35)`;
                     ctx.strokeStyle = `hsla(${b.hue}, 80%, 65%, 0.75)`;
@@ -360,7 +368,6 @@
                 ctx.fill();
                 ctx.stroke();
 
-                // Reflexion
                 ctx.beginPath();
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
                 ctx.ellipse(b.x - b.radius/2.5, b.y - b.radius/2.5, b.radius/4, b.radius/6, Math.PI/4, 0, Math.PI*2);
@@ -373,7 +380,6 @@
             requestAnimationFrame(animate);
         }
 
-        // Interaktion
         function checkHit(x, y) {
             for (let i = bubbles.length - 1; i >= 0; i--) {
                 let b = bubbles[i];
@@ -389,6 +395,9 @@
                     } else if (b.type === 'flower') {
                         score += 20;
                         showPlopp("BLUME! +20");
+                    } else if (b.type === 'music') {
+                        playMusicOnce();
+                        showPlopp("MUSIK AB! 🎶");
                     } else {
                         score++;
                         showPlopp("PLOPP!");
@@ -398,6 +407,12 @@
                     break;
                 }
             }
+        }
+
+        function playMusicOnce() {
+            bgMusic.pause();
+            bgMusic.currentTime = 0; // Zurück zum Anfang
+            bgMusic.play().catch(e => console.log("Audio Fehler:", e));
         }
 
         canvas.addEventListener('mousedown', (e) => { if (gameActive) checkHit(e.clientX, e.clientY); });
